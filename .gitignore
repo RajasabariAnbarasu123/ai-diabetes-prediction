@@ -1,0 +1,49 @@
+# Java
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+.mvn/
+mvnw.cmd
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment – NEVER commit real credentials
+.env
+*.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# GCP / Firebase service account keys – contains private keys
+*-service-account.json
+*-key.json
+gcp-key.json
+backend/src/main/resources/gcp-key.json
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads & logs
+uploads/
+*.log
+
+# Docker overrides
+docker-compose.override.yml
