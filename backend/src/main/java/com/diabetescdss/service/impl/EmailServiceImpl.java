@@ -12,6 +12,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
+import org.springframework.beans.factory.annotation.Value;
 import org.thymeleaf.context.Context;
 
 @Slf4j
@@ -22,11 +23,21 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
 
+    @Value("${app.frontend.url:https://ai-diabetes-prediction-yir6.onrender.com}")
+    private String frontendUrl;
+
+    private String getBaseFrontendUrl() {
+        if (frontendUrl == null || frontendUrl.isBlank()) {
+            return "https://ai-diabetes-prediction-yir6.onrender.com";
+        }
+        return frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
+    }
+
     @Override
     public void sendVerificationEmail(User user, String token) {
         Context context = new Context();
         context.setVariable("name", user.getName());
-        context.setVariable("verificationLink", "http://localhost:3000/verify-email?token=" + token);
+        context.setVariable("verificationLink", getBaseFrontendUrl() + "/verify-email?token=" + token);
 
         String content = templateEngine.process(EmailTemplates.VERIFICATION_EMAIL, context);
         sendMail(user.getEmail(), "Diabetes CDSS - Email Verification", content);
@@ -36,7 +47,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendPasswordResetEmail(User user, String token) {
         Context context = new Context();
         context.setVariable("name", user.getName());
-        context.setVariable("resetLink", "http://localhost:3000/reset-password?token=" + token);
+        context.setVariable("resetLink", getBaseFrontendUrl() + "/reset-password?token=" + token);
 
         String content = templateEngine.process(EmailTemplates.PASSWORD_RESET, context);
         sendMail(user.getEmail(), "Diabetes CDSS - Password Reset", content);
