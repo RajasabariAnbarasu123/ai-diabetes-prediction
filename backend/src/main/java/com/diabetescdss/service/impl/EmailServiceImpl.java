@@ -4,17 +4,20 @@ import com.diabetescdss.constant.EmailTemplates;
 import com.diabetescdss.model.Medication;
 import com.diabetescdss.model.User;
 import com.diabetescdss.service.EmailService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -40,13 +43,27 @@ public class EmailServiceImpl implements EmailService {
     private final RestClient restClient = buildClient();
 
     private static RestClient buildClient() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(10000);
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofSeconds(10));
         return RestClient.builder()
                 .baseUrl("https://api.brevo.com/v3")
                 .requestFactory(factory)
                 .build();
+    }
+
+    /**
+     * Logs a safe fingerprint of the Brevo key at startup (first 9 chars only)
+     * so a wrong key type or empty variable is easy to spot.
+     * A valid Brevo API key starts with "xkeysib-". SMTP keys ("xsmtpsib-") will not work.
+     */
+    @PostConstruct
+    void checkConfig() {
+        String k = brevoApiKey == null ? "" : brevoApiKey.trim();
+        log.info("Brevo key check: length={}, prefix={}, sender={}",
+                k.length(), k.length() >= 9 ? k.substring(0, 9) : k, senderEmail);
     }
 
     private String getBaseFrontendUrl() {
@@ -103,8 +120,10 @@ public class EmailServiceImpl implements EmailService {
 
     private void sendMail(String to, String subject, String html) {
         try {
+            String apiKey = brevoApiKey == null ? "" : brevoApiKey.trim();
+
             Map<String, Object> body = Map.of(
-                    "sender", Map.of("name", senderName, "email", senderEmail),
+                    "sender", Map.of("name", senderName, "email", senderEmail.trim()),
                     "to", List.of(Map.of("email", to)),
                     "subject", subject,
                     "htmlContent", html
@@ -112,7 +131,7 @@ public class EmailServiceImpl implements EmailService {
 
             restClient.post()
                     .uri("/smtp/email")
-                    .header("api-key", brevoApiKey)
+                    .header("api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
